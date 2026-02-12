@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Comment from "./models/Comment.js";
 import PrayerRequest from "./models/PrayerRequest.js";
+import path from "path";
 
 // Load environment variables
 dotenv.config();
@@ -13,13 +14,34 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
+const _dirname = path.resolve();
+
+// Get allowed origins from environment or use defaults
+const getCorsOrigins = () => {
+  if (process.env.CORS_ORIGINS) {
+    return process.env.CORS_ORIGINS.split(',').map(origin => origin.trim());
+  }
+  // Production: allow the deployed frontend
+  if (process.env.NODE_ENV === 'production') {
+    return ["https://your-church-frontend.vercel.app"];
+  }
+  // Development
+  return ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
+};
+
 // Configure CORS for both Express and Socket.io
-app.use(cors());
+app.use(cors({
+  origin: getCorsOrigins(),
+  credentials: true,
+}));
 app.use(express.json());
+
+// Serve frontend static files
+app.use(express.static(path.join(_dirname, "/frontend/dist")));
 
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+    origin: getCorsOrigins(),
     methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
@@ -513,6 +535,15 @@ app.delete("/api/comments/:id", authenticateToken, async (req, res) => {
     console.error("Error deleting comment:", error);
     res.status(500).json({ error: "Failed to delete comment" });
   }
+});
+
+// ============================================
+// CATCH-ALL ROUTE FOR SPA
+// ============================================
+
+// Serve index.html for any route not matching API
+app.get("*", (req, res) => {
+  res.sendFile(path.join(_dirname, "/frontend/dist/index.html"));
 });
 
 // ============================================
