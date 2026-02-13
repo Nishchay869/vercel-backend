@@ -14,7 +14,7 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 
-const _dirname = path.resolve();
+// const _dirname = path.resolve();
 
 // Get allowed origins from environment or use defaults
 const getCorsOrigins = () => {
@@ -23,7 +23,7 @@ const getCorsOrigins = () => {
   }
   // Production: allow the deployed frontend
   if (process.env.NODE_ENV === 'production') {
-    return ["https://your-church-frontend.vercel.app"];
+    return ["https://vercel-frontend-eosin-five.vercel.app"];
   }
   // Development
   return ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"];
@@ -31,13 +31,11 @@ const getCorsOrigins = () => {
 
 // Configure CORS for both Express and Socket.io
 app.use(cors({
-  origin: getCorsOrigins(),
+  origin: "https://vercel-frontend-eosin-five.vercel.app",
   credentials: true,
 }));
 app.use(express.json());
 
-// Serve frontend static files
-app.use(express.static(path.join(_dirname, "/frontend/dist")));
 
 const io = new Server(httpServer, {
   cors: {
@@ -538,14 +536,36 @@ app.delete("/api/comments/:id", authenticateToken, async (req, res) => {
 });
 
 // ============================================
-// CATCH-ALL ROUTE FOR SPA
+// STATIC FILES - Serve frontend in production
 // ============================================
 
-// Serve index.html for any route not matching API
-app.get("*", (req, res) => {
-  res.sendFile(path.join(_dirname, "/frontend/dist/index.html"));
-});
+// Get __dirname equivalent for ES modules
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Serve static files from frontend/dist if it exists
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+import { existsSync } from 'fs';
+
+if (existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  console.log('Serving static files from:', frontendDistPath);
+  
+  // Catch-all route for SPA - serve index.html for unknown routes
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  console.log('Frontend dist not found at:', frontendDistPath);
+  console.log('Run "cd frontend && npm run build" to create the dist folder');
+}
+
+// ============================================
+// CATCH-ALL ROUTE FOR SPA
+// ============================================
 // ============================================
 // HEALTH CHECK
 // ============================================
