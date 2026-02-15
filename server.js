@@ -480,6 +480,28 @@ app.delete("/api/prayer-requests/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE all prayer requests (protected)
+app.delete("/api/prayer-requests", authenticateToken, async (req, res) => {
+  try {
+    if (isMongoConnected) {
+      await PrayerRequest.deleteMany({});
+      res.json({ success: true, message: "All prayer requests deleted" });
+    } else {
+      // Clear all in-memory prayer requests
+      const count = inMemoryPrayerRequests.length;
+      inMemoryPrayerRequests = [];
+      
+      // Notify connected clients
+      io.emit("prayer-request-updated", { type: "deleted-all" });
+      
+      res.json({ success: true, message: `${count} prayer requests deleted` });
+    }
+  } catch (error) {
+    console.error("Error deleting all prayer requests:", error);
+    res.status(500).json({ error: "Failed to delete all prayer requests" });
+  }
+});
+
 // ============================================
 // COMMENTS ROUTES (for admin to manage)
 // ============================================
