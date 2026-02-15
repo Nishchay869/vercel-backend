@@ -30,8 +30,9 @@ const getCorsOrigins = () => {
 };
 
 // Configure CORS for both Express and Socket.io
+// Allow all origins for development
 app.use(cors({
-  origin: "https://vercel-frontend-eosin-five.vercel.app",
+  origin: true,
   credentials: true,
 }));
 app.use(express.json());
@@ -39,7 +40,7 @@ app.use(express.json());
 
 const io = new Server(httpServer, {
   cors: {
-    origin: getCorsOrigins(),
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
   },
 });
